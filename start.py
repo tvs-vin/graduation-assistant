@@ -18,12 +18,17 @@ with open("config.json") as f:
 # defs
 
 def main() -> None:
-    print('Starting Grad Assist')
+    if(config["debug"] == "1"):
+        print('Starting Grad Assist')
     
     # Startup checks
     
-    if(config["first_launch"] == 1):
+    if(config["first_launch"] == "1"):
         subprocess.run([sys.executable, "code/setup.py"])
+        if(config["debug"] == "1"):
+            print('Finished startup tasks')
+    
+    subprocess.run([sys.executable, "code/main.py"])
     
 
 # runs the program

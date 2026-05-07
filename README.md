@@ -25,6 +25,8 @@ Configuration will be handled by the file `config.json`
 
 ## Input
 
+Input will be done with a standard **USB BARCODE SCANNER**. All code will assume it acts as such, as in the scanner inputs the data and then submits the data on its own
+
 ## Data Storage
 
 ## Audio routing
