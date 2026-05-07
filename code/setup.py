@@ -23,7 +23,7 @@ def databaseSetup(overwrite): # Overwrite should only be used reseting program f
     database.execute('''CREATE TABLE IF NOT EXISTS audio
             (id INTEGER PRIMARY KEY AUTOINCREMENT,
             student_id TEXT NOT NULL,
-            audio_data BLOB NOT NULL,
+            audio_data TEXT NOT NULL,
             FOREIGN KEY(student_id) REFERENCES students(student_id))''')
     database.execute("""CREATE TABLE IF NOT EXISTS photos
             (id INTEGER PRIMARY KEY AUTOINCREMENT,

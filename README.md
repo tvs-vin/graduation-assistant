@@ -12,6 +12,7 @@ The program needs to accept input, and then translate that into a DB lookup to f
     - Python 3.13.5
 - [ ] Make datastructure
     - [x] SQLite 3, a built in package in python will be used
+    - [X] Audio files and photos are stored as raw files in the database directory
     - [ ] Still needs to be flushed out
 - [ ] Decide feature-set
     - [ ] Make data

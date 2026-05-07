@@ -78,15 +78,7 @@ class GradAssist:
             print("WIP")
             self.mainloop()
         elif(choice == "2"): # Database Management
-            print("Options:\n1.) Lookup ID")
-            choice = input("\nEnter your choice: ")
-            if(choice == "1"):
-                id = input("Enter student ID: ")
-                print(self.sq_fetchall(id))
-            
-            input("\nPress Enter to continue...\n")
-            
-            self.mainloop()
+            self.db_menu()
         elif(choice == "3"): # Config
             self.config_menu()
         elif(choice == "4"): # Exit
@@ -103,6 +95,42 @@ class GradAssist:
         else:
             print("Invalid choice. Please try again.")
             self.mainloop()
+    
+    def db_menu(self):
+        print("Options:\n1.) Lookup ID \n2.) Add to database \n3.) Back to Main Menu")
+        choice = input("\nEnter your choice: ")
+        if(choice == "1"):
+            id = input("Enter student ID: ")
+            print(self.sq_fetchall(id))
+            input("\nPress Enter to continue...\n")
+        elif(choice == "2"):
+            id = input("Enter student ID: ")
+            exists = self.sq_exists(id)
+            print("\n")
+            if(exists):
+                print(f"{self.sq_fetchall(id)}\n")
+                print("Options: \n1.) Name \n2.) Audio Data \n3.) Photo Data")
+                choice = input("What value to edit: ")
+                if(choice == "1"):
+                    new_name = input("Enter new name: ")
+                    self.sq_raw(f"""UPDATE students SET name = '{new_name}' WHERE student_id = {id}""")
+                elif(choice == "2"):
+                    new_audio = input("Enter new audio data: ")
+                    self.sq_raw(f"""UPDATE audio SET audio_data = '{new_audio}' WHERE student_id = {id}""")
+                elif(choice == "3"):
+                    new_photo = input("Enter new photo data: ")
+                    self.sq_raw(f"""UPDATE photos SET photo_data = '{new_photo}' WHERE student_id = {id}""")
+            else:
+                name = input("Enter student name: ")
+                self.sq_insert(id, 1, name)
+                audio_data = input("Enter audio data (or leave blank): ")
+                if(audio_data != ""):
+                    self.sq_insert(id, 2, audio_data)
+                photo_data = input("Enter photo data (or leave blank): ")
+                if(photo_data != ""):
+                    self.sq_insert(id, 3, photo_data)
+        
+        self.mainloop()    
     
     def config_menu(self):
         if(self.gui):
@@ -151,7 +179,7 @@ Config:
                 self.config_menu()
             elif(choice == "3"): # Turn on GUI
                 temp_conf = self.config
-                temp_conf["gui"] = 1
+                temp_conf["gui"] = "1"
                 self.update_config(temp_conf)
                 print("Relaunch the Program")
                 self.quit()
@@ -160,6 +188,19 @@ Config:
     
     
     # SQLite 
+    
+    def sq_insert(self, id: str, table: int, value: str):
+        try:
+            if(table == 1): # students
+                self.cursor.execute(f"""INSERT INTO students (student_id, name) VALUES ({id}, {value})""")
+            elif(table == 2): # photos
+                self.cursor.execute(f"""INSERT INTO audio (student_id, audio_data) VALUES ({id}, {value})""")
+            elif(table == 3): # audios
+                self.cursor.execute(f"""INSERT INTO photos (student_id, photo_data) VALUES ({id}, {value})""")
+            self.conn.commit()
+        except Exception as e:
+            print(f"Error executing query | {e}")
+        
     
     def sq_fetchall(self, id):
         try:
@@ -187,8 +228,12 @@ Config:
                     string += f"Student ID: {row[1]}\n"
                 if(row[2] is not None):
                     string += f"Audio Data: Exists\n"
+                else:
+                    string += f"Audio Data: Not Set\n"
                 if(row[3] is not None):
                     string += f"Photo Data: Exists\n"
+                else:
+                    string += f"Photo Data: Not Set\n"
             return string
         except Exception as e:
             print(f"Error executing query | {e}")
@@ -205,6 +250,17 @@ Config:
                         WHERE student_id = {id}""")
             var = return_var.fetchall()
             return var[0]
+        except Exception as e:
+            print(f"Error executing query | {e}")
+    
+    def sq_exists(self, id):
+        try:
+            query = f"""SELECT 1 FROM students WHERE student_id = {id}"""
+            result = self.cursor.execute(query).fetchone()
+            if result is not None:
+                return True
+            else:
+                return False
         except Exception as e:
             print(f"Error executing query | {e}")
     
