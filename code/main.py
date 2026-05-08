@@ -6,17 +6,28 @@ import os
 import sys
 import json
 import sqlite3
-from time import sleep
 import tkinter as tk
-from tkinter import messagebox
+from typing import Optional
+import pygame
+import time
+import threading
+
+from PIL import Image, ImageTk
+from time import sleep
+from tkinter import messagebox, simpledialog
 
 with open("config.json", "r") as f:
     config = json.load(f)
 
 class GradAssist:    
     def __init__(self):
+        
+        # Config setup
+        
         with open("config.json", "r") as f:
             self.config = json.load(f)
+        
+        self.temp_config = self.config
         
         if(self.config["gui"] == "1"):
             self.gui = True
@@ -26,14 +37,12 @@ class GradAssist:
             self.debug = True
         else:
             self.debug = False
-            
+        
+        # GUI Setup
+        
         if(self.gui):
-            self.root = tk.Tk()
-            self.root.title("ID Scanner System - TVS Vin")
-            self.root.geometry("1000x800")
-            self.root.resizable(False, False)
-            self.main_frame = tk.Frame(padx=20, pady=20, bg=self.config["bg_color"])
-            self.main_frame.pack(fill='both', expand=True)
+            self.__initgui__()
+            
         else:
             if(self.debug):
                 print('Welcome to GradAssist! Running in console mode.')
@@ -46,6 +55,11 @@ class GradAssist:
         
         if(self.debug):
             print("Connected to database successfully.")
+        
+        # Audio player
+        
+        self.mixer = pygame.mixer
+        self.mixer.init()
     
     
     # Menus - CLI
@@ -200,9 +214,29 @@ Config:
             self.conn.commit()
         except Exception as e:
             print(f"Error executing query | {e}")
-        
     
-    def sq_fetchall(self, id):
+    def sq_fetchall_raw(self, id):
+        try:
+            query = f"""SELECT
+                students.name,
+                students.student_id,
+                audio.audio_data,
+                photos.photo_data
+            FROM
+                students
+            LEFT JOIN
+                photos ON students.student_id = photos.student_id
+            LEFT JOIN
+                audio ON students.student_id = audio.student_id
+            WHERE students.student_id = {id}"""
+            
+            results = self.cursor.execute(query)
+            return results.fetchall()
+        except Exception as e:
+            print(f"Error executing query | {e}")   
+            return []
+    
+    def sq_fetchall(self, id, giveraw: Optional[bool] = False):
         try:
             query = f"""SELECT
                 students.name,
@@ -234,7 +268,10 @@ Config:
                     string += f"Photo Data: Exists\n"
                 else:
                     string += f"Photo Data: Not Set\n"
-            return string
+            if(giveraw == False):
+                return string
+            else:
+                return results
         except Exception as e:
             print(f"Error executing query | {e}")
     
@@ -265,8 +302,122 @@ Config:
             print(f"Error executing query | {e}")
     
     
+    # GUI
+    
+    def __initgui__(self):
+        self.root = tk.Tk()
+        self.root.title("ID Scanner System - TVS-Vin")
+        self.root.geometry("1200x1000")
+        self.root.resizable(True, True)
+        self.main_frame = tk.Frame(padx=20, pady=20, bg=self.config["bg_color"])
+        self.main_frame.pack(fill='both', expand=True)
+        
+        self.gui_switch("main")
+    
+    def gui_clear(self):
+        for widget in self.main_frame.winfo_children():
+            widget.destroy()
+    
+    def gui_switch(self, menu: str, sub_menu: Optional[str] = None):
+        if(menu == "main"):
+            self.gui_clear()
+            
+            self.main_menu = tk.Label(self.main_frame, text=f"GradAssist V{self.config['version']}", font=("Arial", 24), bg=self.config["bg_color"], fg=self.config["fg_color"]).pack(pady=20)
+            
+            self.options_main_frame = tk.Frame(self.main_frame, bg=self.config["bg_color"])
+            self.options_main_option_scan_mode = tk.Button(self.options_main_frame, text="Scan ID", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_switch("scan_menus", "scan_main")).pack(pady=10)
+            self.options_main_option_database_management = tk.Button(self.options_main_frame, text="Database Management", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_switch("db_menu")).pack(pady=10)
+            self.options_main_option_config = tk.Button(self.options_main_frame, text="Config", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_switch("config_menu")).pack(pady=10)
+            if(self.debug):
+                self.options_main_option_activate_cli_loop = tk.Button(self.options_main_frame, text="Activate CLI Loop", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.mainloop()).pack(pady=10)
+            self.options_main_option_exit = tk.Button(self.options_main_frame, text="Exit", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.quit()).pack(pady=10)
+            self.options_main_frame.pack(pady=20)
+        
+        elif(menu == "scan_menus"):
+            if(sub_menu == "scan_main"):
+                self.gui_clear()
+
+                self.scan_main_label = tk.Label(self.main_frame, text="Scan Mode", font=("Arial", 24), bg=self.config["bg_color"], fg=self.config["fg_color"]).pack(pady=20)
+
+                self.scan_main_option_start_scan = tk.Button(self.main_frame, text="Start Scan", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.scan_handler()).pack(pady=10)
+                self.scan_main_option_back_to_main_menu = tk.Button(self.main_frame, text="Back to Main Menu", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_switch("main")).pack(pady=10)
+            
+            if(sub_menu == "scan_active"):
+                self.gui_clear()
+                
+                self.scan_active_label = tk.Label(self.main_frame, text="Scan Mode", font=("Arial", 24), bg=self.config["bg_color"], fg=self.config["fg_color"]).pack(pady=20)
+
+                self.scan_active_image = tk.Label(self.main_frame, bg=self.config["bg_color"]).pack(pady=10)
+                self.gui_tools(menu="scan", tool="update_image", param = "default")
+                
+        elif(menu == "db_menu"):
+            self.gui_clear()
+            
+            self.db_menu_label = tk.Label(self.main_frame, text="Database Management", font=("Arial", 24), bg=self.config["bg_color"], fg=self.config["fg_color"]).pack(pady=20)
+            
+            self.db_menu_option_lookup_id = tk.Button(self.main_frame, text="Lookup ID", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: print("WIP")).pack(pady=10)
+            self.db_menu_option_edit_database = tk.Button(self.main_frame, text="Edit Database", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: print("WIP")).pack(pady=10)
+            self.db_menu_option_back_to_main_menu = tk.Button(self.main_frame, text="Back to Main Menu", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_switch("main")).pack(pady=10)
+        
+        elif(menu == "config_menu"):
+            self.gui_clear()
+            
+            self.config_menu_label = tk.Label(self.main_frame, text="Config", font=("Arial", 24), bg=self.config["bg_color"], fg=self.config["fg_color"]).pack(pady=20)
+            
+            self.config_menu_option_reset_to_defaults = tk.Button(self.main_frame, text="Reset to Defaults", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_tools(menu="config", tool="reset")).pack(pady=10)
+            self.config_menu_option_change_config_values = tk.Button(self.main_frame, text="Change Config Values", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: print("WIP")).pack(pady=10)
+            self.config_menu_option_turn_off_gui = tk.Button(self.main_frame, text="Turn off GUI (Relaunch Required)", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_tools(menu="config", tool="gui_toggle")).pack(pady=10)
+            self.config_menu_option_back_to_main_menu = tk.Button(self.main_frame, text="Back to Main Menu", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_switch("main")).pack(pady=10)
+    
+    def scan_handler(self, student_id: Optional[str] = ""):
+        if (student_id == ""):
+            student_id = simpledialog.askstring(title="Please scan the ID now.", prompt="Scan the ID now.")
+        
+        if(self.debug):
+            print(f"Scanned ID: {student_id}")
+        results = self.sq_fetchall_raw(student_id)
+        if results == []:
+            if(self.debug):
+                print("No results found for scanned ID.")
+            messagebox.showerror("Error", "No results found for scanned ID.")
+            return
+        results_list = list(results) # 0: name 1: ID 2: audio data loc 3: photo data loc
+        
+        
+        
+    
     # Tools
     
+    def gui_tools(self, menu: Optional[str], tool: Optional[str], param: Optional[str] = None):
+        if(menu == "config"):
+            if(tool == "reset"):
+                temp_conf = self.config
+                temp_conf["reset"] = "1"
+                self.update_config(temp_conf)
+                messagebox.showinfo("Config Reset", "Config reset to defaults. Relaunch the program.")
+                self.quit()
+            elif(tool == "gui_toggle"):
+                temp_conf = self.config
+                temp_conf["gui"] = "0"
+                self.update_config(temp_conf)
+                messagebox.showinfo("GUI Toggled", "GUI turned off. Relaunch the program.")
+                self.quit()
+        elif(menu == "scan"):
+            if(tool == "image_formater"):
+                if(param == "default"):
+                    pil_img = Image.open("logo.png")
+                    pil_img = pil_img.resize((400, 400))
+                    tk_img = ImageTk.PhotoImage(pil_img)
+                    return tk_img
+                else:
+                    pass
+    
+    def mixer_play(self, audio_path):
+        if(os.path.exists(audio_path)):
+            self.mixer.music.load(audio_path)
+            self.mixer.music.play()
+        elif(self.debug):
+            print(f"Audio file not found at {audio_path}")
     
     def quit(self): #safely quits the program
         self.conn.close()
@@ -282,13 +433,13 @@ Config:
         with open("config.json", "r") as f:
             self.config = json.load(f)
     
-    
 def main():
     if(config["debug"] == "1"):
         print('starting main')
     app = GradAssist()
     if(app.gui == True):
         app.root.mainloop()
+        app.quit()
     else:
         app.mainloop()
     

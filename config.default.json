@@ -1,6 +1,7 @@
 {
     "gui": "1",
     "debug":"0",
+    "version":"0.1.1",
 
     "first_launch": "1",
     "reset":"0",

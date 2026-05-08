@@ -1,3 +1,5 @@
 .venv
 .vscode
 config.json
+database/audio/*.flac
+database/photos/*.flac
