@@ -14,7 +14,7 @@ import threading
 
 from PIL import Image, ImageTk
 from time import sleep
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox, simpledialog, ttk
 
 with open("config.json", "r") as f:
     config = json.load(f)
@@ -339,7 +339,7 @@ Config:
 
                 self.scan_main_label = tk.Label(self.main_frame, text="Scan Mode", font=("Arial", 24), bg=self.config["bg_color"], fg=self.config["fg_color"]).pack(pady=20)
 
-                self.scan_main_option_start_scan = tk.Button(self.main_frame, text="Start Scan", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.scan_handler()).pack(pady=10)
+                self.scan_main_option_start_scan = tk.Button(self.main_frame, text="Start Scan", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_switch("scan_menus", "scan_active")).pack(pady=10)
                 self.scan_main_option_back_to_main_menu = tk.Button(self.main_frame, text="Back to Main Menu", font=("Arial", 18), bg=self.config["fg_color"], fg=self.config["bg_color"], command=lambda: self.gui_switch("main")).pack(pady=10)
             
             if(sub_menu == "scan_active"):
@@ -347,8 +347,16 @@ Config:
                 
                 self.scan_active_label = tk.Label(self.main_frame, text="Scan Mode", font=("Arial", 24), bg=self.config["bg_color"], fg=self.config["fg_color"]).pack(pady=20)
 
-                self.scan_active_image = tk.Label(self.main_frame, bg=self.config["bg_color"]).pack(pady=10)
-                self.gui_tools(menu="scan", tool="update_image", param = "default")
+                image = self.gui_image()
+                self.scan_active_image = tk.Label(self.main_frame, bg=self.config["bg_color"], image=image)
+                self.scan_active_image.configure(image=image)
+                self.scan_active_image.pack(pady=10)
+                
+                self.scan_active_name = tk.Label(self.main_frame, text="Please scan ID", font=("Arial", 18), bg=self.config["bg_color"], fg=self.config["fg_color"]).pack(pady=10)
+                
+                self.scan_active_scanbox_entry_var = tk.StringVar()
+                self.scan_active_scanbox = tk.Entry(self.main_frame, font=("Arial", 18), fg=self.config["fg_color"], bg=self.config["bg_color"], textvariable=self.scan_active_scanbox_entry_var).bind('<Return>', self.scan_handler(self.scan_active_scanbox_entry_var.get()))
+                
                 
         elif(menu == "db_menu"):
             self.gui_clear()
@@ -388,6 +396,15 @@ Config:
     
     # Tools
     
+    def gui_image(self, param: Optional[str] = "default"):
+        if(param == "default"):
+            pil_img = Image.open("images/def-cropped.jpeg")
+            pil_img = pil_img.resize((400, 400))
+            tk_img = ImageTk.PhotoImage(pil_img)
+            return tk_img
+        else:
+            return ImageTk.PhotoImage(Image.open("images/def.png").resize((400, 400)))
+    
     def gui_tools(self, menu: Optional[str], tool: Optional[str], param: Optional[str] = None):
         if(menu == "config"):
             if(tool == "reset"):
@@ -403,14 +420,7 @@ Config:
                 messagebox.showinfo("GUI Toggled", "GUI turned off. Relaunch the program.")
                 self.quit()
         elif(menu == "scan"):
-            if(tool == "image_formater"):
-                if(param == "default"):
-                    pil_img = Image.open("logo.png")
-                    pil_img = pil_img.resize((400, 400))
-                    tk_img = ImageTk.PhotoImage(pil_img)
-                    return tk_img
-                else:
-                    pass
+            pass
     
     def mixer_play(self, audio_path):
         if(os.path.exists(audio_path)):
@@ -420,6 +430,8 @@ Config:
             print(f"Audio file not found at {audio_path}")
     
     def quit(self): #safely quits the program
+        if(self.debug):
+            print('Exitings...')
         self.conn.close()
         quit()
     

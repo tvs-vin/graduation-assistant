@@ -2,9 +2,11 @@
     "gui": "1",
     "debug": "1",
     "version": "0.1.1",
+    
     "first_launch": "1",
     "reset": "0",
     "db_location": "database/grad-assist.db",
+
     "fg_color": "#fefefe",
     "bg_color": "#12021c"
 }

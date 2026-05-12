@@ -1,4 +1,4 @@
-# graduation-assistant ![Graduation Assistant Logo](logo.png)
+# graduation-assistant ![Graduation Assistant Logo](logo.png){width=100px, height=100px}
 
 A program that aims to make announcing names easier, modular, and usable by most 
 
