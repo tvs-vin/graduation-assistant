@@ -5,7 +5,9 @@
 
     "first_launch": "1",
     "reset":"0",
+
     "db_location": "database/grad-assist.db",
+    "db_folder":"database",
 
     "bg_color": "#12021c"
 

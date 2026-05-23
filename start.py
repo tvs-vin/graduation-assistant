@@ -25,8 +25,8 @@ def main() -> None:
     
     if(config["first_launch"] == "1"):
         subprocess.run([sys.executable, "code/setup.py"])
-        if(config["debug"] == "1"):
-            print('Finished startup tasks')
+    if(config["debug"] == "1"):
+        print('Finished startup tasks')
     
     subprocess.run([sys.executable, "code/main.py"])
     
